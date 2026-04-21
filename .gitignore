@@ -1,0 +1,133 @@
+# ============================================
+# SECRETS — NEVER COMMIT THESE
+# ============================================
+# Ignore everything inside imp/ by default
+imp/*
+
+# Real env files anywhere in the repo (NEVER committed)
+*.env
+.env
+.env.local
+.env.development
+.env.production
+.env.staging
+.env.test
+
+# Keys / credentials
+*.pem
+*.key
+credentials.json
+secrets.json
+config/secrets*.yaml
+
+# Exception: allow the template file (placeholders only, safe to commit)
+# MUST come AFTER all *.env rules above or they re-ignore the template
+!imp/.env.example
+
+# ============================================
+# Python
+# ============================================
+venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ============================================
+# PySpark / Delta Lake / Streaming state
+# ============================================
+spark-warehouse/
+metastore_db/
+derby.log
+checkpoints/
+_delta_log_tmp/
+*.crc
+.spark-staging/
+/tmp/
+
+# ============================================
+# Streamlit
+# ============================================
+.streamlit/secrets.toml
+
+# ============================================
+# Prefect
+# ============================================
+.prefect/
+prefect.db
+prefect.db-journal
+
+# ============================================
+# Jupyter / Notebooks
+# ============================================
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ============================================
+# Testing / Coverage
+# ============================================
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# ============================================
+# IDE / Editors
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# ============================================
+# OS
+# ============================================
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# ============================================
+# Logs
+# ============================================
+*.log
+logs/
+*.log.*
+
+# ============================================
+# Local data / temp outputs
+# ============================================
+data/local/
+data/tmp/
+*.tmp
+*.bak
