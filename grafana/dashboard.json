@@ -1,0 +1,506 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_SNOWFLAKE_- STREAMLAKE",
+      "label": "Snowflake - StreamLake",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "michelin-snowflake-datasource",
+      "pluginName": "Snowflake"
+    }
+  ],
+  "__elements": {},
+  "__requires": [
+    {
+      "type": "panel",
+      "id": "barchart",
+      "name": "Bar chart",
+      "version": ""
+    },
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "11.4.0"
+    },
+    {
+      "type": "datasource",
+      "id": "michelin-snowflake-datasource",
+      "name": "Snowflake",
+      "version": "2.1.0"
+    },
+    {
+      "type": "panel",
+      "id": "piechart",
+      "name": "Pie chart",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "Stat",
+      "version": ""
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Real-time OTT analytics dashboard for StreamLake - user engagement, device mix, content performance, and session metrics from Snowflake Gold tables.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "michelin-snowflake-datasource",
+        "uid": "${DS_SNOWFLAKE_- STREAMLAKE}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.4.0",
+      "targets": [
+        {
+          "fillMode": "null",
+          "queryText": "SELECT\n    COUNT(*) AS \"Total Sessions\",\n    COUNT(DISTINCT USER_ID) AS \"Unique Users\",\n    SUM(EVENT_COUNT) AS \"Total Events\",\n    ROUND(AVG(MAX_WATCH_SECONDS), 1) AS \"Avg Watch (sec)\"\nFROM GOLD.USER_SESSION_SUMMARY",
+          "queryType": "table",
+          "refId": "A",
+          "timeColumns": [
+            "time"
+          ],
+          "datasource": {
+            "type": "michelin-snowflake-datasource",
+            "uid": "${DS_SNOWFLAKE_- STREAMLAKE}"
+          }
+        }
+      ],
+      "title": "Session Summary",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "michelin-snowflake-datasource",
+        "uid": "${DS_SNOWFLAKE_- STREAMLAKE}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.4.0",
+      "targets": [
+        {
+          "fillMode": "null",
+          "queryText": "SELECT\n    DEVICE_TYPE,\n    SUM(EVENT_COUNT) AS COUNT\nFROM GOLD.DAILY_DEVICE_MIX\nGROUP BY DEVICE_TYPE\nORDER BY COUNT DESC",
+          "queryType": "table",
+          "refId": "A",
+          "timeColumns": [
+            "time"
+          ],
+          "datasource": {
+            "type": "michelin-snowflake-datasource",
+            "uid": "${DS_SNOWFLAKE_- STREAMLAKE}"
+          }
+        }
+      ],
+      "title": "Device Mix",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "michelin-snowflake-datasource",
+        "uid": "${DS_SNOWFLAKE_- STREAMLAKE}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 3,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.97,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xField": "EVENT_TYPE",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "11.4.0",
+      "targets": [
+        {
+          "fillMode": "null",
+          "queryText": "SELECT\n    EVENT_TYPE,\n    SUM(EVENT_COUNT) AS COUNT\nFROM GOLD.HOURLY_EVENT_DISTRIBUTION\nGROUP BY EVENT_TYPE\nORDER BY COUNT DESC",
+          "queryType": "table",
+          "refId": "A",
+          "timeColumns": [
+            "time"
+          ],
+          "datasource": {
+            "type": "michelin-snowflake-datasource",
+            "uid": "${DS_SNOWFLAKE_- STREAMLAKE}"
+          }
+        }
+      ],
+      "title": "Event Type Distribution",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "michelin-snowflake-datasource",
+        "uid": "${DS_SNOWFLAKE_- STREAMLAKE}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "id": 2,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.97,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "11.4.0",
+      "targets": [
+        {
+          "fillMode": "null",
+          "queryText": "SELECT\n    CONTENT_ID,\n    SUM(TOTAL_WATCH_SECONDS) AS WATCH_TIME\nFROM GOLD.TOP_CONTENT_BY_WATCH_TIME\nGROUP BY CONTENT_ID\nORDER BY WATCH_TIME DESC\nLIMIT 10",
+          "queryType": "table",
+          "refId": "A",
+          "timeColumns": [
+            "time"
+          ],
+          "datasource": {
+            "type": "michelin-snowflake-datasource",
+            "uid": "${DS_SNOWFLAKE_- STREAMLAKE}"
+          }
+        }
+      ],
+      "title": "Top Content by Watch Time",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "michelin-snowflake-datasource",
+        "uid": "${DS_SNOWFLAKE_- STREAMLAKE}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 32
+      },
+      "id": 1,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.97,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "11.4.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "michelin-snowflake-datasource",
+            "uid": "${DS_SNOWFLAKE_- STREAMLAKE}"
+          },
+          "fillMode": "null",
+          "queryText": "SELECT\n    COUNTRY_CODE,\n    SUM(TOTAL_WATCH_SECONDS) AS WATCH_TIME\nFROM GOLD.DAILY_WATCH_TIME_BY_COUNTRY\nGROUP BY COUNTRY_CODE\nORDER BY WATCH_TIME DESC",
+          "queryType": "table",
+          "refId": "A",
+          "timeColumns": [
+            "time"
+          ]
+        }
+      ],
+      "title": "Daily Watch Time by Country",
+      "type": "barchart"
+    }
+  ],
+  "schemaVersion": 40,
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "StreamLake OTT Analytics",
+  "uid": "efjv234ryeo74f",
+  "version": 1,
+  "weekStart": ""
+}
