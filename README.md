@@ -368,6 +368,60 @@ Don't import Spark-running scripts into a Prefect flow. Subprocess them. Fresh J
 
 ---
 
+---
+
+## Production Deployment Plan
+
+> This section documents how StreamLake's local pipeline would deploy to AWS EMR for production-scale workloads. The architecture is designed for this transition from day one — same Spark configs, same Delta Lake versions, same S3 bucket. The `emr/` directory contains the deployment topology as executable infrastructure documentation.
+>
+> **Status:** Local pipeline fully operational. EMR configs documented in `emr/` — not yet executed on a live cluster.
+
+### Why the local pipeline scales to EMR without redesign
+
+Every architectural decision in StreamLake was made with production scale in mind:
+
+- **Partitioning by `user_id` and `event_date`** means Spark distributes work evenly across executors. At 10M users, each partition handles a predictable slice — no hot partitions, no stragglers. Adding EMR core nodes increases parallelism linearly.
+- **Delta Lake ACID transactions** mean SPOT instance interruptions don't corrupt data. EMR can safely use SPOT nodes (70% cheaper) because Delta's write-ahead log guarantees atomicity — a failed write leaves the table in the last committed state, not a half-written mess.
+- **Kafka's 6-partition `user-events` topic** maps to 6 Spark tasks per micro-batch today. Scaling to 600 partitions (matching 600 Confluent Cloud partitions) would give 600 parallel Spark tasks — linear throughput increase with zero code changes. Kafka partition count is the single dial that controls ingestion parallelism.
+- **`spark.sql.shuffle.partitions=200`** in `emr/cluster_config.json` matches EMR core node count × executor cores. At 10 nodes × 8 vCPU × 2 executors = 160 executors — 200 shuffle partitions keeps all executors busy with minimal idle time.
+
+### EMR deployment files
+
+| File | Purpose |
+|---|---|
+| `emr/cluster_config.json` | EMR cluster definition: m5.xlarge master, m5.2xlarge SPOT core nodes, auto-scaling 2→10 nodes, Spark config matching local settings exactly |
+| `emr/bootstrap.sh` | Node bootstrap: installs Python 3.11, all pinned dependencies from requirements.txt, sets PYSPARK_PYTHON on every node before Spark launches |
+| `emr/submit_job.sh` | spark-submit commands for Bronze ingestion, Silver transform, Gold transform — uploads scripts to S3, submits as EMR steps via AWS CLI |
+
+### Auto-scaling policy
+
+The cluster scales out when YARN memory utilisation exceeds 75% for 5 minutes (adds 2 nodes) and scales in when utilisation drops below 40% for 15 minutes (removes 1 node). This handles the OTT traffic pattern — evening primetime spikes followed by overnight quiet periods — without paying for idle capacity overnight.
+
+| Scenario | Nodes | vCPU | RAM | Events/day estimate |
+|---|---|---|---|---|
+| Development (local) | 1 (simulated) | 8 | 16GB | ~10K |
+| EMR minimum (2 core) | 3 total | 20 | 80GB | ~5M |
+| EMR auto-scaled (10 core) | 11 total | 84 | 336GB | ~500M |
+| EMR max with partition scaling | 11 + 600 Kafka partitions | 84 | 336GB | ~2B+ |
+
+### Delta Lake at scale — OPTIMIZE and ZORDER
+
+At production volumes, Delta Lake tables accumulate thousands of small files per partition (the "small file problem"). Two Delta maintenance operations keep query performance fast:
+
+```sql
+-- Compact small files in Silver table into larger, query-efficient files
+OPTIMIZE delta.`s3://streamlake-data-lake/silver/` ZORDER BY (user_id, event_date);
+
+-- Compact Gold aggregates — run after each batch refresh
+OPTIMIZE delta.`s3://streamlake-data-lake/gold/user_session_summary/` ZORDER BY (country_code, device_type);
+```
+
+`ZORDER BY (user_id, event_date)` co-locates data for the most common query patterns (per-user drill-down, per-day aggregation) in the same files — Spark skips entire files that don't match a filter, reducing S3 read volume by 60-80% at scale.
+
+### Prefect in production
+
+The local `orchestration/flow.py` already runs Silver → Gold → Snowflake as a dependency graph with retries. On EMR, the same Prefect flow would replace the `subprocess` calls with `aws emr add-steps` calls from `emr/submit_job.sh` — each EMR step becomes a Prefect task. Prefect's retry logic handles SPOT interruptions; Delta Lake's ACID guarantees handle partial writes.
+
 ## Author
 
 **Satvik Pandey** — AI / Python Engineer with 4+ years of experience building LLM systems, data pipelines, and production backends.

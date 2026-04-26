@@ -1,0 +1,142 @@
+{
+  "Name": "streamlake-production-cluster",
+  "ReleaseLabel": "emr-6.15.0",
+  "Notes": "EMR 6.15.0 ships Spark 3.5.0 — matches local delta-spark 3.2.0 and PySpark 3.5.3 exactly. Java 17 LTS is the default JVM on EMR 6.15+, matching local Microsoft OpenJDK 17.",
+
+  "Instances": {
+    "InstanceGroups": [
+      {
+        "Name": "Master",
+        "Market": "ON_DEMAND",
+        "InstanceRole": "MASTER",
+        "InstanceType": "m5.xlarge",
+        "InstanceCount": 1,
+        "Notes": "m5.xlarge = 4 vCPU, 16GB RAM. Sufficient for Spark driver + YARN ResourceManager at StreamLake scale."
+      },
+      {
+        "Name": "Core",
+        "Market": "SPOT",
+        "InstanceRole": "CORE",
+        "InstanceType": "m5.2xlarge",
+        "InstanceCount": 2,
+        "Notes": "m5.2xlarge = 8 vCPU, 32GB RAM per node. SPOT pricing reduces cost ~70% for fault-tolerant Spark workloads. Delta Lake ACID guarantees safe retries on SPOT interruption."
+      }
+    ],
+    "AutoScalingRole": "EMR_AutoScaling_DefaultRole",
+    "KeepJobFlowAliveWhenNoSteps": false,
+    "TerminationProtected": false
+  },
+
+  "AutoScalingPolicy": {
+    "Constraints": {
+      "MinCapacity": 2,
+      "MaxCapacity": 10,
+      "Notes": "Scales from 2 to 10 core nodes. At 10x m5.2xlarge = 80 vCPU, 320GB RAM — handles ~50M events/day comfortably."
+    },
+    "Rules": [
+      {
+        "Name": "ScaleOut-HighYARNMemory",
+        "Description": "Add 2 nodes when YARN memory used exceeds 75% for 5 minutes — handles burst ingestion from Confluent Kafka spikes",
+        "Action": {
+          "SimpleScalingPolicyConfiguration": {
+            "AdjustmentType": "CHANGE_IN_CAPACITY",
+            "ScalingAdjustment": 2,
+            "CoolDown": 300
+          }
+        },
+        "Trigger": {
+          "CloudWatchAlarmDefinition": {
+            "Namespace": "AWS/ElasticMapReduce",
+            "MetricName": "YARNMemoryAvailablePercentage",
+            "ComparisonOperator": "LESS_THAN",
+            "Threshold": 25,
+            "Period": 300,
+            "EvaluationPeriods": 1,
+            "Statistic": "AVERAGE"
+          }
+        }
+      },
+      {
+        "Name": "ScaleIn-LowYARNMemory",
+        "Description": "Remove 1 node when YARN memory available exceeds 60% for 15 minutes — reclaims cost after burst subsides",
+        "Action": {
+          "SimpleScalingPolicyConfiguration": {
+            "AdjustmentType": "CHANGE_IN_CAPACITY",
+            "ScalingAdjustment": -1,
+            "CoolDown": 300
+          }
+        },
+        "Trigger": {
+          "CloudWatchAlarmDefinition": {
+            "Namespace": "AWS/ElasticMapReduce",
+            "MetricName": "YARNMemoryAvailablePercentage",
+            "ComparisonOperator": "GREATER_THAN",
+            "Threshold": 60,
+            "Period": 900,
+            "EvaluationPeriods": 1,
+            "Statistic": "AVERAGE"
+          }
+        }
+      }
+    ]
+  },
+
+  "Configurations": [
+    {
+      "Classification": "spark-defaults",
+      "Properties": {
+        "spark.sql.extensions": "io.delta.sql.DeltaSparkSessionExtension",
+        "spark.sql.catalog.spark_catalog": "org.apache.spark.sql.delta.catalog.DeltaCatalog",
+        "spark.databricks.delta.retentionDurationCheck.enabled": "false",
+        "spark.sql.shuffle.partitions": "200",
+        "spark.default.parallelism": "200",
+        "spark.serializer": "org.apache.spark.serializer.KryoSerializer",
+        "spark.executor.memory": "20g",
+        "spark.executor.cores": "4",
+        "spark.driver.memory": "8g",
+        "spark.jars.packages": "io.delta:delta-spark_2.12:3.2.0,org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262",
+        "Notes": "JAR versions match local dev exactly. spark.sql.shuffle.partitions=200 matches EMR core node count x executor cores for full parallelism."
+      }
+    },
+    {
+      "Classification": "spark-env",
+      "Configurations": [
+        {
+          "Classification": "export",
+          "Properties": {
+            "PYSPARK_PYTHON": "/usr/bin/python3",
+            "Notes": "EMR 6.15 ships Python 3.9 system-wide. Bootstrap script upgrades to 3.11 and sets this path explicitly — same PYSPARK_PYTHON pattern used in local dev."
+          }
+        }
+      ]
+    },
+    {
+      "Classification": "hadoop-env",
+      "Configurations": [
+        {
+          "Classification": "export",
+          "Properties": {
+            "JAVA_HOME": "/usr/lib/jvm/java-17-amazon-corretto",
+            "Notes": "Amazon Corretto 17 = Amazon's OpenJDK 17 build. TCK-certified, behaviorally identical to Microsoft OpenJDK 17 used in local dev."
+          }
+        }
+      ]
+    }
+  ],
+
+  "Applications": [
+    { "Name": "Spark" },
+    { "Name": "Hadoop" },
+    { "Name": "Ganglia" }
+  ],
+
+  "JobFlowRole": "EMR_EC2_DefaultRole",
+  "ServiceRole": "EMR_DefaultRole",
+  "LogUri": "s3://streamlake-data-lake/emr-logs/",
+
+  "Tags": [
+    { "Key": "Project", "Value": "StreamLake" },
+    { "Key": "Environment", "Value": "production" },
+    { "Key": "ManagedBy", "Value": "manual" }
+  ]
+}
